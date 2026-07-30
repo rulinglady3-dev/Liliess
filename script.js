@@ -1,4 +1,4 @@
-const canvas = document.getElementById("lilyCanvas");
+const şu canvas = document.getElementById("lilyCanvas");
 const ctx = canvas.getContext("2d");
 
 const loading = document.getElementById("loading");
