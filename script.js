@@ -1,461 +1,258 @@
-const şu canvas = document.getElementById("lilyCanvas");
+const canvas = document.getElementById("lilyCanvas");
 const ctx = canvas.getContext("2d");
-
 const loading = document.getElementById("loading");
 
-let width;
-let height;
-let dpr;
+let W = 0;
+let H = 0;
 
-let particles = [];
+const particles = [];
 
-const PARTICLE_COUNT = 9000;
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
 
-function resizeCanvas() {
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-  width = window.innerWidth;
-  height = window.innerHeight;
-
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.width = W;
+  canvas.height = H;
 }
 
 function random(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-/* --------------------------------------------------
-   LILY SHAPE
--------------------------------------------------- */
+function addParticle(x, y, size, r, g, b, alpha, move) {
+  particles.push({
+    x: x,
+    y: y,
 
-function createPetal(
-  centerX,
-  centerY,
-  angle,
-  petalLength,
-  petalWidth,
-  count,
-  color
-) {
-  for (let i = 0; i < count; i++) {
-    const t = Math.random();
+    baseX: x,
+    baseY: y,
 
-    const distance = t * petalLength;
+    size: size,
 
-    const curve =
-      Math.sin(t * Math.PI) *
-      petalWidth;
+    r: r,
+    g: g,
+    b: b,
 
-    const side = random(-1, 1);
+    alpha: alpha,
 
-    const localX =
-      distance +
-      Math.cos(t * Math.PI) *
-      petalLength *
-      0.12;
+    move: move,
 
-    const localY =
-      side *
-      curve *
-      random(0.2, 1);
+    speed: random(0.5, 1.5),
 
-    const x =
-      centerX +
-      localX * Math.cos(angle) -
-      localY * Math.sin(angle);
-
-    const y =
-      centerY +
-      localX * Math.sin(angle) +
-      localY * Math.cos(angle);
-
-    particles.push({
-      x,
-      y,
-
-      baseX: x,
-      baseY: y,
-
-      size: random(0.35, 1.8),
-
-      color,
-
-      phase: random(0, Math.PI * 2),
-
-      speed: random(0.4, 1.5),
-
-      movement: random(1, 5),
-
-      alpha: random(0.25, 1),
-
-      type: "petal"
-    });
-  }
+    phase: random(0, Math.PI * 2)
+  });
 }
 
-function createLily(
-  centerX,
-  centerY,
-  scale = 1
-) {
-  const pinkColors = [
-    [255, 45, 145],
-    [255, 85, 175],
-    [255, 125, 205],
-    [255, 175, 225],
-    [255, 215, 240]
-  ];
+/* PEMBE LILYUM */
 
-  /* 6 büyük pembe taç yaprak */
+function createLily() {
+  particles.length = 0;
 
-  for (let p = 0; p < 6; p++) {
+  const cx = W / 2;
+  const cy = H * 0.43;
+
+  const scale = Math.min(W, H) / 650;
+
+  /* 6 TAÇ YAPRAK */
+
+  for (let petal = 0; petal < 6; petal++) {
+
     const angle =
-      (Math.PI * 2 / 6) * p -
+      petal *
+      (Math.PI * 2 / 6) -
       Math.PI / 2;
 
-    createPetal(
-      centerX,
-      centerY,
-      angle,
-      random(105, 145) * scale,
-      random(45, 65) * scale,
-      850,
-      pinkColors[
-        Math.floor(
-          Math.random() *
-          pinkColors.length
-        )
-      ]
-    );
+    for (let i = 0; i < 500; i++) {
+
+      const t = Math.random();
+
+      const length =
+        t *
+        155 *
+        scale;
+
+      const width =
+        Math.sin(t * Math.PI) *
+        58 *
+        scale;
+
+      const side =
+        random(-1, 1);
+
+      const localX =
+        length;
+
+      const localY =
+        side *
+        width;
+
+      const x =
+        cx +
+        localX * Math.cos(angle) -
+        localY * Math.sin(angle);
+
+      const y =
+        cy +
+        localX * Math.sin(angle) +
+        localY * Math.cos(angle);
+
+      const brightness =
+        random(0.7, 1);
+
+      addParticle(
+        x,
+        y,
+
+        random(0.5, 1.8),
+
+        255,
+
+        55 + brightness * 100,
+
+        140 + brightness * 90,
+
+        random(0.3, 0.95),
+
+        random(1, 4)
+      );
+    }
   }
 
-  /* Lilyumun parlak merkezi */
+  /* LILYUM MERKEZİ */
 
-  for (let i = 0; i < 650; i++) {
+  for (let i = 0; i < 500; i++) {
+
     const angle =
-      Math.random() *
-      Math.PI *
-      2;
+      random(0, Math.PI * 2);
 
     const radius =
-      Math.pow(
-        Math.random(),
-        1.8
-      ) *
+      Math.sqrt(Math.random()) *
       35 *
       scale;
 
     const x =
-      centerX +
+      cx +
       Math.cos(angle) *
       radius;
 
     const y =
-      centerY +
+      cy +
       Math.sin(angle) *
       radius;
 
-    particles.push({
+    addParticle(
       x,
       y,
 
-      baseX: x,
-      baseY: y,
+      random(0.7, 2.2),
 
-      size: random(0.5, 2.2),
+      255,
 
-      color: [
-        255,
-        random(175, 230),
-        random(40, 110)
-      ],
+      random(170, 230),
 
-      phase: random(
-        0,
-        Math.PI * 2
-      ),
+      random(30, 90),
 
-      speed: random(
-        0.7,
-        2
-      ),
+      random(0.5, 1),
 
-      movement: random(
-        1,
-        5
-      ),
-
-      alpha: random(
-        0.4,
-        1
-      ),
-
-      type: "center"
-    });
+      random(1, 5)
+    );
   }
 
-  /* Yeşil sap */
+  /* YEŞİL SAP */
 
-  for (let i = 0; i < 1000; i++) {
-    const t = Math.random();
+  for (let i = 0; i < 900; i++) {
+
+    const t =
+      Math.random();
+
+    const x =
+      cx +
+      Math.sin(t * 3) *
+      20 *
+      scale +
+      random(-7, 7);
 
     const y =
-      centerY +
-      20 * scale +
+      cy +
+      20 +
       t *
-      300 *
+      330 *
       scale;
 
-    const curve =
-      Math.sin(
-        t *
-        Math.PI
-      ) *
-      30 *
-      scale;
-
-    const x =
-      centerX +
-      curve +
-      random(
-        -8,
-        8
-      ) *
-      scale;
-
-    particles.push({
+    addParticle(
       x,
       y,
 
-      baseX: x,
-      baseY: y,
+      random(0.4, 1.5),
 
-      size: random(
-        0.4,
-        1.6
-      ),
+      random(60, 120),
 
-      color: [
-        random(
-          70,
-          130
-        ),
+      random(170, 245),
 
-        random(
-          180,
-          255
-        ),
+      random(90, 160),
 
-        random(
-          100,
-          170
-        )
-      ],
+      random(0.25, 0.85),
 
-      phase: random(
-        0,
-        Math.PI * 2
-      ),
-
-      speed: random(
-        0.3,
-        1
-      ),
-
-      movement: random(
-        1,
-        4
-      ),
-
-      alpha: random(
-        0.25,
-        0.9
-      ),
-
-      type: "stem"
-    });
+      random(1, 4)
+    );
   }
 }
 
-/* --------------------------------------------------
-   BACKGROUND PARTICLES
--------------------------------------------------- */
-
-function createFloatingParticles() {
-  for (let i = 0; i < 800; i++) {
-    const x =
-      random(
-        0,
-        width
-      );
-
-    const y =
-      random(
-        0,
-        height
-      );
-
-    particles.push({
-      x,
-      y,
-
-      baseX: x,
-      baseY: y,
-
-      size: random(
-        0.2,
-        1.1
-      ),
-
-      color: [
-        255,
-        random(
-          40,
-          150
-        ),
-
-        random(
-          120,
-          220
-        )
-      ],
-
-      phase: random(
-        0,
-        Math.PI * 2
-      ),
-
-      speed: random(
-        0.15,
-        0.5
-      ),
-
-      movement: random(
-        3,
-        15
-      ),
-
-      alpha: random(
-        0.05,
-        0.35
-      ),
-
-      type: "dust"
-    });
-  }
-}
-
-/* --------------------------------------------------
-   CREATE SCENE
--------------------------------------------------- */
-
-function buildScene() {
-  particles = [];
-
-  const scale =
-    Math.min(
-      width,
-      height
-    ) /
-    650;
-
-  createLily(
-    width / 2,
-    height * 0.42,
-    scale
-  );
-
-  createFloatingParticles();
-}
-
-/* --------------------------------------------------
-   ANIMATION
--------------------------------------------------- */
+/* ANİMASYON */
 
 function animate(time) {
-  const t =
-    time *
-    0.001;
 
   ctx.fillStyle =
-    "rgba(0, 0, 0, 0.18)";
+    "rgba(0, 0, 0, 0.25)";
 
   ctx.fillRect(
     0,
     0,
-    width,
-    height
+    W,
+    H
   );
+
+  const t =
+    time * 0.001;
 
   ctx.globalCompositeOperation =
     "lighter";
 
-  for (
-    let i = 0;
-    i < particles.length;
-    i++
-  ) {
+  for (let i = 0; i < particles.length; i++) {
+
     const p =
       particles[i];
 
-    const waveX =
+    const x =
+      p.baseX +
       Math.sin(
         t *
         p.speed +
         p.phase
       ) *
-      p.movement;
-
-    const waveY =
-      Math.cos(
-        t *
-        p.speed *
-        0.8 +
-        p.phase
-      ) *
-      p.movement;
-
-    const x =
-      p.baseX +
-      waveX;
+      p.move;
 
     const y =
       p.baseY +
-      waveY;
-
-    const glow =
-      p.type ===
-      "center"
-        ? 1.5
-        : 1;
+      Math.cos(
+        t *
+        p.speed +
+        p.phase
+      ) *
+      p.move;
 
     ctx.beginPath();
 
     ctx.arc(
       x,
       y,
-      p.size *
-      glow,
+      p.size,
       0,
-      Math.PI *
-      2
+      Math.PI * 2
     );
 
-    const [
-      r,
-      g,
-      b
-    ] =
-      p.color;
-
     ctx.fillStyle =
-      `rgba(${r}, ${g}, ${b}, ${p.alpha})`;
+      `rgba(${p.r}, ${p.g}, ${p.b}, ${p.alpha})`;
 
     ctx.fill();
   }
@@ -468,19 +265,17 @@ function animate(time) {
   );
 }
 
-/* --------------------------------------------------
-   START
--------------------------------------------------- */
+/* BAŞLAT */
 
-resizeCanvas();
+resize();
 
-buildScene();
+createLily();
 
-setTimeout(() => {
-  loading.classList.add(
-    "hide"
-  );
-}, 700);
+/* Yazıyı kesin olarak gizle */
+
+loading.style.opacity = "0";
+
+loading.style.visibility = "hidden";
 
 requestAnimationFrame(
   animate
@@ -489,7 +284,10 @@ requestAnimationFrame(
 window.addEventListener(
   "resize",
   () => {
-    resizeCanvas();
-    buildScene();
+
+    resize();
+
+    createLily();
+
   }
-);b no
+);
