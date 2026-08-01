@@ -4,206 +4,244 @@ const loading = document.getElementById("loading");
 
 let W = 0;
 let H = 0;
+let dpr = 1;
 
-const particles = [];
+let particles = [];
+let imageDataCanvas;
+let imageDataCtx;
+
+const image = new Image();
+image.src = "lily.png";
+
+/* =========================================
+   CANVAS BOYUTU
+========================================= */
 
 function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+
   W = window.innerWidth;
   H = window.innerHeight;
 
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-function random(min, max) {
-  return Math.random() * (max - min) + min;
-}
+/* =========================================
+   GÖRSELİ PARÇACIKLARA ÇEVİR
+========================================= */
 
-function addParticle(x, y, size, r, g, b, alpha, move) {
-  particles.push({
-    x: x,
-    y: y,
+function createParticles() {
+  particles = [];
 
-    baseX: x,
-    baseY: y,
+  imageDataCanvas = document.createElement("canvas");
+  imageDataCtx = imageDataCanvas.getContext(
+    "2d",
+    {
+      willReadFrequently: true
+    }
+  );
 
-    size: size,
+  /*
+    Görseli önce küçük bir canvas'a çiziyoruz.
+    Böylece milyonlarca değil,
+    kontrollü sayıda parçacık oluşuyor.
+  */
 
-    r: r,
-    g: g,
-    b: b,
+  const maxImageWidth = Math.min(
+    W * 0.82,
+    950
+  );
 
-    alpha: alpha,
+  const maxImageHeight = Math.min(
+    H * 0.82,
+    850
+  );
 
-    move: move,
+  const imageRatio =
+    image.width / image.height;
 
-    speed: random(0.5, 1.5),
+  let drawWidth = maxImageWidth;
+  let drawHeight =
+    drawWidth / imageRatio;
 
-    phase: random(0, Math.PI * 2)
-  });
-}
+  if (drawHeight > maxImageHeight) {
+    drawHeight = maxImageHeight;
+    drawWidth =
+      drawHeight * imageRatio;
+  }
 
-/* PEMBE LILYUM */
+  imageDataCanvas.width =
+    Math.floor(drawWidth);
 
-function createLily() {
-  particles.length = 0;
+  imageDataCanvas.height =
+    Math.floor(drawHeight);
 
-  const cx = W / 2;
-  const cy = H * 0.43;
+  imageDataCtx.drawImage(
+    image,
+    0,
+    0,
+    imageDataCanvas.width,
+    imageDataCanvas.height
+  );
 
-  const scale = Math.min(W, H) / 650;
+  const pixels =
+    imageDataCtx.getImageData(
+      0,
+      0,
+      imageDataCanvas.width,
+      imageDataCanvas.height
+    ).data;
 
-  /* 6 TAÇ YAPRAK */
+  const offsetX =
+    (W - imageDataCanvas.width) / 2;
 
-  for (let petal = 0; petal < 6; petal++) {
+  const offsetY =
+    (H - imageDataCanvas.height) / 2;
 
-    const angle =
-      petal *
-      (Math.PI * 2 / 6) -
-      Math.PI / 2;
+  /*
+    2 veya 3 pikselde bir örnek alıyoruz.
+    Bu sayı hem kaliteli hem performanslı.
+  */
 
-    for (let i = 0; i < 500; i++) {
+  const step =
+    W < 700 ? 3 : 2;
 
-      const t = Math.random();
+  for (
+    let y = 0;
+    y < imageDataCanvas.height;
+    y += step
+  ) {
+    for (
+      let x = 0;
+      x < imageDataCanvas.width;
+      x += step
+    ) {
+      const index =
+        (y * imageDataCanvas.width + x) * 4;
 
-      const length =
-        t *
-        155 *
-        scale;
+      const r =
+        pixels[index];
 
-      const width =
-        Math.sin(t * Math.PI) *
-        58 *
-        scale;
+      const g =
+        pixels[index + 1];
 
-      const side =
-        random(-1, 1);
+      const b =
+        pixels[index + 2];
 
-      const localX =
-        length;
+      const a =
+        pixels[index + 3];
 
-      const localY =
-        side *
-        width;
-
-      const x =
-        cx +
-        localX * Math.cos(angle) -
-        localY * Math.sin(angle);
-
-      const y =
-        cy +
-        localX * Math.sin(angle) +
-        localY * Math.cos(angle);
+      /*
+        Siyah arka planı at.
+        Sadece lilyumun parlak
+        ve renkli bölümleri kalsın.
+      */
 
       const brightness =
-        random(0.7, 1);
+        (r + g + b) / 3;
 
-      addParticle(
-        x,
-        y,
+      const isBlack =
+        brightness < 20;
 
-        random(0.5, 1.8),
+      if (
+        a < 50 ||
+        isBlack
+      ) {
+        continue;
+      }
 
-        255,
+      /*
+        Çok karanlık alanları
+        daha seyrek göster.
+      */
 
-        55 + brightness * 100,
+      if (
+        brightness < 55 &&
+        Math.random() > 0.25
+      ) {
+        continue;
+      }
 
-        140 + brightness * 90,
+      particles.push({
+        baseX:
+          offsetX + x,
 
-        random(0.3, 0.95),
+        baseY:
+          offsetY + y,
 
-        random(1, 4)
-      );
+        x:
+          offsetX + x,
+
+        y:
+          offsetY + y,
+
+        r,
+        g,
+        b,
+
+        alpha:
+          Math.min(
+            1,
+            0.25 +
+            brightness / 255
+          ),
+
+        size:
+          brightness > 190
+            ? 1.35
+            : 1,
+
+        phase:
+          Math.random() *
+          Math.PI *
+          2,
+
+        speed:
+          0.45 +
+          Math.random() *
+          0.9,
+
+        movement:
+          0.7 +
+          Math.random() *
+          2.6,
+
+        /*
+          Her parçacığın hareketi
+          aynı olmayacak.
+        */
+
+        drift:
+          Math.random() *
+          Math.PI *
+          2
+      });
     }
-  }
-
-  /* LILYUM MERKEZİ */
-
-  for (let i = 0; i < 500; i++) {
-
-    const angle =
-      random(0, Math.PI * 2);
-
-    const radius =
-      Math.sqrt(Math.random()) *
-      35 *
-      scale;
-
-    const x =
-      cx +
-      Math.cos(angle) *
-      radius;
-
-    const y =
-      cy +
-      Math.sin(angle) *
-      radius;
-
-    addParticle(
-      x,
-      y,
-
-      random(0.7, 2.2),
-
-      255,
-
-      random(170, 230),
-
-      random(30, 90),
-
-      random(0.5, 1),
-
-      random(1, 5)
-    );
-  }
-
-  /* YEŞİL SAP */
-
-  for (let i = 0; i < 900; i++) {
-
-    const t =
-      Math.random();
-
-    const x =
-      cx +
-      Math.sin(t * 3) *
-      20 *
-      scale +
-      random(-7, 7);
-
-    const y =
-      cy +
-      20 +
-      t *
-      330 *
-      scale;
-
-    addParticle(
-      x,
-      y,
-
-      random(0.4, 1.5),
-
-      random(60, 120),
-
-      random(170, 245),
-
-      random(90, 160),
-
-      random(0.25, 0.85),
-
-      random(1, 4)
-    );
   }
 }
 
-/* ANİMASYON */
+/* =========================================
+   ANİMASYON
+========================================= */
 
 function animate(time) {
+  const t =
+    time * 0.001;
+
+  /*
+    Siyah arka plan.
+    Düşük opacity sayesinde
+    videodaki gibi hafif iz oluşur.
+  */
 
   ctx.fillStyle =
-    "rgba(0, 0, 0, 0.25)";
+    "rgba(0, 0, 0, 0.22)";
 
   ctx.fillRect(
     0,
@@ -212,47 +250,83 @@ function animate(time) {
     H
   );
 
-  const t =
-    time * 0.001;
-
   ctx.globalCompositeOperation =
     "lighter";
 
-  for (let i = 0; i < particles.length; i++) {
-
+  for (
+    let i = 0;
+    i < particles.length;
+    i++
+  ) {
     const p =
       particles[i];
 
-    const x =
-      p.baseX +
+    /*
+      Lilyumun tamamı çok hafif
+      nefes alıyormuş gibi hareket eder.
+    */
+
+    const globalWaveX =
+      Math.sin(
+        t * 0.42
+      ) *
+      3;
+
+    const globalWaveY =
+      Math.cos(
+        t * 0.35
+      ) *
+      2;
+
+    /*
+      Her parçacığın kendi
+      küçük akışı.
+    */
+
+    const waveX =
       Math.sin(
         t *
         p.speed +
         p.phase
       ) *
-      p.move;
+      p.movement;
 
-    const y =
-      p.baseY +
+    const waveY =
       Math.cos(
         t *
-        p.speed +
-        p.phase
+        p.speed *
+        0.8 +
+        p.drift
       ) *
-      p.move;
+      p.movement;
+
+    p.x =
+      p.baseX +
+      globalWaveX +
+      waveX;
+
+    p.y =
+      p.baseY +
+      globalWaveY +
+      waveY;
 
     ctx.beginPath();
 
     ctx.arc(
-      x,
-      y,
+      p.x,
+      p.y,
       p.size,
       0,
       Math.PI * 2
     );
 
     ctx.fillStyle =
-      `rgba(${p.r}, ${p.g}, ${p.b}, ${p.alpha})`;
+      `rgba(
+        ${p.r},
+        ${p.g},
+        ${p.b},
+        ${p.alpha}
+      )`;
 
     ctx.fill();
   }
@@ -265,29 +339,38 @@ function animate(time) {
   );
 }
 
-/* BAŞLAT */
+/* =========================================
+   BAŞLAT
+========================================= */
 
-resize();
+image.onload = () => {
+  resize();
 
-createLily();
+  createParticles();
 
-/* Yazıyı kesin olarak gizle */
+  loading.classList.add(
+    "hide"
+  );
 
-loading.style.opacity = "0";
+  requestAnimationFrame(
+    animate
+  );
+};
 
-loading.style.visibility = "hidden";
-
-requestAnimationFrame(
-  animate
-);
+image.onerror = () => {
+  loading.textContent =
+    "LILY.PNG NOT FOUND";
+};
 
 window.addEventListener(
   "resize",
   () => {
-
-    resize();
-
-    createLily();
-
+    if (
+      image.complete &&
+      image.naturalWidth > 0
+    ) {
+      resize();
+      createParticles();
+    }
   }
 );
